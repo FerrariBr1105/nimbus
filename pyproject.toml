@@ -1,10 +1,10 @@
 [tool.poetry]
-name = "project_name"
-version = "0.1.0"
-description = "Uma breve descrição do seu projeto"
-authors = ["Seu Nome <seu.email@example.com>"]
+name = "nimbus"
+version = "1.0.0"
+description = "Enterprise Challenge 2024: Nimbus"
+authors = ["Breno Ferrari <seu.email@example.com>"]
 
-# Diretório onde os pacotes estão localizados
+# Diretório dos pacotes
 packages = [
     { include = "src" }
 ]
@@ -18,4 +18,3 @@ requires = ["poetry-core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.setuptools]
-# Esta seção é removida para evitar duplicação
