@@ -10,15 +10,15 @@ from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.chrome.options import Options
 
 # Setup Selenium
-def inicia_navegador(download_dir):
+def inicia_navegador(dir_download, chromedriver_exe):
     chrome_options = Options()
     chrome_options.add_experimental_option('prefs', {
-        "download.default_directory":download_dir,  # Define padrão de download
+        "download.default_directory":dir_download,  # Define padrão de download
         "download.prompt_for_download": False,
         "download.directory_upgrade": True,
         "safebrowsing.enabled": True
     })
-    service = Service(executable_path='../utils/chromedriver.exe')
+    service = Service(executable_path=chromedriver_exe)
     navegador = webdriver.Chrome(service=service, options=chrome_options)
     navegador.maximize_window()
     return navegador
