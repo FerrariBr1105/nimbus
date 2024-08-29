@@ -4,7 +4,7 @@
 *.zip
 *.csv
 *.pyc
-
+*.crdownload
 ### JupyterNotebooks ###
 # gitignore template for Jupyter Notebooks
 # website: http://jupyter.org/
