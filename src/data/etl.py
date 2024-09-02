@@ -89,7 +89,7 @@ def transformacao_inmet(df):
         df[f] = df[f].astype(np.float64)
 
     var_int = [
-        'altitude',
+        #'altitude',
         'umidade_rel_min_hora_ant',
         'umid_rel_ar',
         'vento_dir_hora'
@@ -102,4 +102,25 @@ def transformacao_inmet(df):
     return df 
 
 def carregamento_inmet(df):
-    return df
+    uf = df['uf'][0]
+    dir_load = f'../../../data/processed/inmet_historico/{uf.lower()}.csv'
+
+    if os.path.exists(dir_load):
+        df_atualizar = pd.read_csv(dir_load, sep=';')
+        df_load = pd.concat([df_atualizar, df])
+        tam_i = len(df_load)
+        df_load.drop_duplicates(subset=['data', 'hora'], keep='first', inplace=True)
+        tam_f = len(df_load)
+        amostra_dup = tam_i-tam_f
+        print(f'O arquivo contém {amostra_dup} amostras duplicadas que não serão carregadas.')
+    else:
+        df_load = df.copy()
+
+    df_load.to_csv(
+        dir_load, 
+        sep=';', 
+        decimal='.',
+        index=False 
+    )
+    
+    print(f'Amostra carregada com sucesso em: {dir_load[:-3]}')
