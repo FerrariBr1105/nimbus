@@ -2,6 +2,7 @@ import os
 import zipfile
 import pandas as pd
 import numpy as np
+from google.cloud import bigquery
 
 def descompacta_zip(dir_zip, dir_ext):
     with zipfile.ZipFile(dir_zip, 'r') as zip_ref:
@@ -25,7 +26,8 @@ def processa_csv_inmet(df_info, df):
 
 def transformacao_inmet(df):
     # Colunas
-    dict_ajt_var = {'data (yyyy-mm-dd)':'data', 
+    dict_ajt_var = {
+        'Data':'data', 
         'hora (utc)':'hora', 
         'região':'regiao', 
         'uf':'uf', 
@@ -53,13 +55,23 @@ def transformacao_inmet(df):
         'vento, velocidade horaria (m/s)':'vento_vel_hora'
     }
 
-    cols = [c for c in df if "Unnamed" not in c]
-    df = df[cols]
-    df.columns = [c.lower() for c in df]
-    df.columns = df.columns.map(dict_ajt_var)
+    cols = df.columns
+    cols_ajt = list(dict_ajt_var.values())
+
+    if len(cols) == len(cols_ajt):
+        pass
+    else:
+        df = df.iloc[:, :-1]
+
+    df.columns = cols_ajt
+
+    #cols = [c for c in df if "Unnamed" not in c]
+    #df = df[cols]
+    #df.columns = [c.lower() for c in df]
+    #df.columns = df.columns.map(dict_ajt_var)
 
     # Limpeza
-    lat_long = ['latitude', 'longitude']
+    lat_long = ['latitude', 'longitude', 'altitude']
 
     for l in lat_long:
         df[l] = (df[l]
@@ -95,9 +107,9 @@ def transformacao_inmet(df):
         'vento_dir_hora'
     ]
     for i in var_int:
-        df[i] = df[i].astype(np.int64)
+        df[i] = df[i].fillna(0).astype(np.int64)
     
-    df['data'] = pd.to_datetime(df['data'], format='%Y-%m-%d')
+    df['data'] = pd.to_datetime(df['data'], format='%Y/%m/%d')
 
     return df 
 
@@ -124,3 +136,105 @@ def carregamento_inmet(df):
     )
     
     print(f'Amostra carregada com sucesso em: {dir_load[:-3]}')
+
+
+
+def exporta_dados_bq(df, table_id):
+    # Local credencial
+    credencial = '../../utils/bq_credencial.json'
+
+    # Configuração do cliente BQ
+    client = bigquery.Client.from_service_account_json(credencial)
+
+    # Configurar o job de carregamento
+    job_config = bigquery.LoadJobConfig(
+        write_disposition=bigquery.WriteDisposition.WRITE_APPEND,
+        autodetect=True
+    )
+
+    # Carregar o DataFrame para a tabela do BQ
+    job = client.load_table_from_dataframe(
+        df, 
+        table_id, 
+        job_config=job_config
+    )
+
+    # Esperar o job ser concluído
+    job.result()
+
+    print(f"Carregamento para a tabela {table_id} concluído com sucesso.")
+
+
+
+def transformacao_aneel(df):
+
+    # Rótulos colunas
+    df.columns = [c.lower() for c in df]
+    
+    # UF do IBGE
+    uf_ibge = {
+        '11': 'Rondônia',
+        '12': 'Acre',
+        '13': 'Amazonas',
+        '14': 'Roraima',
+        '15': 'Pará',
+        '16': 'Amapá',
+        '17': 'Tocantins',
+        '21': 'Maranhão',
+        '22': 'Piauí',
+        '23': 'Ceará',
+        '24': 'Rio Grande do Norte',
+        '25': 'Paraíba',
+        '26': 'Pernambuco',
+        '27': 'Alagoas',
+        '28': 'Sergipe',
+        '29': 'Bahia',
+        '31': 'Minas Gerais',
+        '32': 'Espírito Santo',
+        '33': 'Rio de Janeiro',
+        '35': 'São Paulo',
+        '41': 'Paraná',
+        '42': 'Santa Catarina',
+        '43': 'Rio Grande do Sul',
+        '50': 'Mato Grosso do Sul',
+        '51': 'Mato Grosso',
+        '52': 'Goiás',
+        '53': 'Distrito Federal'
+    }
+
+    df['ufibge'] = (
+        df['codibge']
+                    .astype(str)
+                    .apply(lambda v: v[:2])
+                    .astype(np.int64)
+    )
+
+    df['nom_ufibge'] = (
+        df['codibge']
+                    .astype(str)
+                    .apply(lambda v: v[:2])
+                    .map(uf_ibge)
+    )
+    
+    # Flag de ocorrência devido ao meio ambiente
+    df['ocorrencia_meio_ambiente'] = (
+        df['dscocorrenciaaberta']
+                                .apply(lambda v: v.lower())
+                                .str.contains('meio ambiente')
+                                #.astype(np.int64)
+    )
+
+    var = [
+        'datgeracaoconjuntodados',
+        'nomagente',
+        'dthinicioocorrenciaaberta',
+        'dthfimocorrenciaaberta',
+        'ufibge',
+        'nom_ufibge',
+        'ocorrencia_meio_ambiente'
+    ]
+
+    df = df[var]
+
+    print('Dados transformados com sucesso.')
+    return df
